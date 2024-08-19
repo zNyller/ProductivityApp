@@ -19,7 +19,7 @@ class Aplicativo:
     def __init__(self) -> None:
         self.running = False
         self.tasks = []
-        self.options = {
+        self.managing_options = {
             1: 'Concluir', 
             2: 'Desmarcar conclusão', 
             3: 'Editar', 
@@ -28,43 +28,60 @@ class Aplicativo:
         }
 
     def run(self):
-        """Loop principal do aplicativo."""
+        """Inicia o aplicativo chamando suas funções principais."""
         self.running = True
         self.show_menu()
         self.task_loop()
-        while self.running:
-            continuar = self.console()
-            if continuar:
-                logging.info('Quebrando o loop principal')
-                break
+        self.main_loop()
 
     def show_menu(self) -> None:
-        """Exibe a mensagem de boas vindas e pede a adição de uma primeira tarefa."""
+        """Exibe a mensagem de boas-vindas e pede a adição de uma primeira tarefa."""
         print(messages.WELCOME_MSG)
-        tarefa1 = input('Nome da sua primeira tarefa: ')
-        self._add_task(tarefa1)
+        first_task = utils.get_valid_input('Nome da sua primeira tarefa: ').capitalize()
+        self._add_task(first_task)
 
     def task_loop(self) -> None:
         """Inicia um loop para adição de novas tarefas."""
         print(messages.TASK_LOOP_MSG)
         while True:
-            task_name = input('Nome da tarefa: ').capitalize()
-            if task_name == 'P':
-                print('Prosseguindo...')
-                self.show_tasks()
-                break
-            self._add_task(task_name)
+            task_name = utils.get_valid_input('Nome da tarefa: ').capitalize()
+            if task_name != 'P':
+                self._add_task(task_name)
+                continue
+            print('Prosseguindo...')
+            self._show_tasks()
+            break
 
-    def show_tasks(self) -> None:
+    def main_loop(self):
+        """Gerencia o loop principal do aplicativo."""
+        while self.running:
+            encerrar = self.console()
+            if encerrar:
+                print('Até a próxima!')
+                logging.info('Quebrando o loop principal')
+                self.running = False
+
+    def console(self) -> bool | None:
+        """Exibe e trata as opções do usuário para gerenciar as tarefas."""
+        print(messages.SELECT_OPTION)
+        console_option = utils.get_valid_input('Insira uma das opções: ').upper()
+        option_selected = self._handle_console_input(console_option)
+        return option_selected
+        
+    def _add_task(self, name: str) -> None:
+        """Armazena a tarefa com 'nome' e 'status' em um dicionário e o adiciona na lista."""
+        new_task = {'nome': name, 'status': self.UNDONE}
+        self.tasks.append(new_task)
+        print(messages.TASK_CREATED)
+
+    def _show_tasks(self) -> None:
         """Exibe a lista de tarefas do usuário."""
         print(messages.YOUR_TASKS)
         for index, task in enumerate(self.tasks, start=1):
             print(f'[{index}] - {task["nome"]} | {task["status"]}')
 
-    def console(self) -> None | bool:
-        """Exibe e trata as opções do usuário para gerenciar as tarefas."""
-        print(messages.SELECT_OPTION)
-        console_option = input('Insira uma das opções: ').upper()
+    def _handle_console_input(self, console_option) -> bool | None:
+        """Verifica se a opção inserida pelo usuário é válida e lida de acordo."""
         while console_option not in self.VALID_CONSOLE_OPTIONS:
             print('Opção inválida. Tente novamente!')
             console_option = input('Insira uma das opções: ').upper()
@@ -74,76 +91,85 @@ class Aplicativo:
             self.task_loop()
             return False
         elif console_option == 'S':
-            print('Até a próxima!')
             return True
-        
-    def _add_task(self, name) -> None:
-        """Armazena a tarefa com 'nome' e 'status' em um dicionário e o adiciona na lista."""
-        new_task = {'nome': name, 'status': self.UNDONE}
-        self.tasks.append(new_task)
-        print(messages.TASK_CREATED)
 
     def _manage_task(self):
+        """Exibe a lista de tarefas atual e as opções de gerenciamento."""
         print(messages.SELECT_TASK)
-        self.show_tasks()
-        task_number = self._get_task_number()
-        if task_number is not None:
-            self._handle_user_option(task_number)
-        else:
-            # Retorna True para quebrar o loop e continuar o código
-            return True
+        self._show_tasks()
+        task_number = self._get_valid_task_number()
+        self._handle_user_option(task_number)
 
-    def _get_task_number(self) -> int | None:
+    def _get_valid_task_number(self) -> int | None:
         """Pergunta o número da tarefa e trata possiveis exceções."""
         while True:
-            task_number = input('Número da tarefa: ')
-            if task_number is not None:
-                try:
-                    int_task_number = int(task_number) - 1
-                    print(f'\nTarefa "{self.tasks[int_task_number]["nome"]}" selecionada!')
-                    return int_task_number
-                except IndexError:
-                    print('Número da tarefa não encontrado! Tente novamente.')
-                    logging.error('Input foi um número fora do range.')
-                except ValueError:
-                    print('Digite um número válido!')
-                    logging.error('Input não foi um número inteiro!')
-                except Exception as e:
-                    logging.error('Erro!', e)
-            else:
-                print('Comando inválido. Tente novamente!')
+            task_number = utils.get_valid_input('Número da tarefa: ')
+            try:
+                int_task_number = int(task_number) - 1
+                print(f'\nTarefa "{self.tasks[int_task_number]["nome"]}" selecionada!')
+                return int_task_number
+            except IndexError:
+                print('Número da tarefa não encontrado! Tente novamente.')
+                logging.error('Input foi um número fora do range.')
+            except ValueError:
+                print('Digite um número válido!')
+                logging.error('Input não foi um número inteiro!')
+            except Exception as e:
+                logging.error(f'Erro inesperado: {e}!')
             
-    def _handle_user_option(self, task_number):
+    def _handle_user_option(self, task_number: int):
         """Exibe as opções de gerenciamento e lida com a opção escolhida pelo usuário."""
-        for key, value in self.options.items():
-            print(f'[{key}] - {value}')
+        self._show_managing_options()
         while True:
             user_option = utils.convert_to_int(input_msg='Insira uma das opções: ')
             proceed = self._handle_options(task_number, user_option)
             if proceed:
                 break
 
-    def _handle_options(self, task, option) -> bool:
+    def _show_managing_options(self) -> None:
+        for key, value in self.managing_options.items():
+            print(f'[{key}] - {value}')
+
+    def _handle_options(self, task_number, option) -> bool:
         """Lida com a opção selecionada pelo usuário."""
-        current_task = self.tasks[task]
-        if option == 1:
-            current_task['status'] = self.DONE
-            print(messages.MARKED_AS_DONE)
-        elif option == 2:
-            if current_task['status'] != self.UNDONE:
-                current_task['status'] = self.UNDONE
-                print(messages.MARKED_AS_UNDONE)
-            else:
-                print(messages.ALREADY_UNDONE)
-                return False # Retorna False para seguir no loop até receber uma opção válida.
-        elif option == 3:
-            ...
-        elif option == 4:
-            deleted_task = self.tasks.pop(task)
-            nome = deleted_task['nome']
-            print(f'Tarefa "{nome}" deletada!')
-        elif option == 5:
-            print('Retornando...')
-        else:
-            print(messages.OPTION_OUT_OF_RANGE)
+        options_map = {
+            1: self._mark_as_done,
+            2: self._mark_as_undone,
+            3: self._edit_task,
+            4: self._delete_task,
+            5: self._go_back
+        }
+        action = options_map.get(option, self._invalid_option)
+        return action(task_number)
+
+    def _mark_as_done(self, task_number):
+        self.tasks[task_number]['status'] = self.DONE
+        print(messages.MARKED_AS_DONE)
         return True
+
+    def _mark_as_undone(self, task_number):
+        current_task = self.tasks[task_number]
+        if current_task['status'] != self.UNDONE:
+            current_task['status'] = self.UNDONE
+            print(messages.MARKED_AS_UNDONE)
+        else:
+            print(messages.ALREADY_UNDONE)
+            return False # Retorna False para seguir no loop até receber uma opção válida.
+        return True
+        
+    def _edit_task(self, task_number):
+        # Implementar edição
+        return True
+
+    def _delete_task(self, task_number):
+        deleted_task = self.tasks.pop(task_number)
+        print(f'Tarefa "{deleted_task["nome"]}" deletada!')
+        return True
+
+    def _go_back(self):
+        print('Retornando...')
+        return True
+
+    def _invalid_option(self):
+        print(messages.OPTION_OUT_OF_RANGE)
+        return False

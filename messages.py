@@ -6,5 +6,5 @@ SELECT_OPTION = '\nOpções:\n[G] para gerenciar uma tarefa\n[A] para adicionar 
 SELECT_TASK = '\nSelecione uma das tarefas para gerenciar.'
 MARKED_AS_DONE = 'Marcada como concluída!'
 MARKED_AS_UNDONE = 'Marcada como não concluída!'
-ALREADY_UNDONE = 'A tarefa selecionada já está como Não concluída!\n'
+ALREADY_UNDONE = 'A tarefa selecionada já está marcada como Não concluída!\n'
 OPTION_OUT_OF_RANGE = 'A opção escolhida não é válida!'
