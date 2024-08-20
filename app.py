@@ -1,6 +1,7 @@
 import logging
 import messages
 import utils
+from task_list import TaskList
 
 # Configuração básica de logging
 logging.basicConfig(
@@ -12,13 +13,11 @@ logging.basicConfig(
 class Aplicativo:
     """Clase principal. Cria, Gerencia e Exibe as tarefas do usuário."""
 
-    DONE = 'Concluída'
-    UNDONE = 'Não concluída'
     VALID_CONSOLE_OPTIONS = ('G', 'A', 'S')
 
     def __init__(self) -> None:
         self.running = False
-        self.tasks = []
+        self.task_list = TaskList()
         self.managing_options = {
             1: 'Concluir', 
             2: 'Desmarcar conclusão', 
@@ -27,7 +26,7 @@ class Aplicativo:
             5: 'Voltar'
         }
 
-    def run(self):
+    def run(self) -> None:
         """Inicia o aplicativo chamando suas funções principais."""
         self.running = True
         self.show_menu()
@@ -38,26 +37,24 @@ class Aplicativo:
         """Exibe a mensagem de boas-vindas e pede a adição de uma primeira tarefa."""
         print(messages.WELCOME_MSG)
         first_task = utils.get_valid_input('Nome da sua primeira tarefa: ').capitalize()
-        self._add_task(first_task)
+        self.task_list.add_task(first_task)
 
     def task_loop(self) -> None:
         """Inicia um loop para adição de novas tarefas."""
         print(messages.TASK_LOOP_MSG)
         while True:
             task_name = utils.get_valid_input('Nome da tarefa: ').capitalize()
-            if task_name != 'P':
-                self._add_task(task_name)
-                continue
-            print('Prosseguindo...')
-            self._show_tasks()
-            break
+            if task_name == 'P':
+                print('Prosseguindo...')
+                self.task_list.show_tasks()
+                break
+            self.task_list.add_task(task_name)
 
-    def main_loop(self):
+    def main_loop(self) -> None:
         """Gerencia o loop principal do aplicativo."""
         while self.running:
             encerrar = self.console()
             if encerrar:
-                print('Até a próxima!')
                 logging.info('Quebrando o loop principal')
                 self.running = False
 
@@ -67,18 +64,6 @@ class Aplicativo:
         console_option = utils.get_valid_input('Insira uma das opções: ').upper()
         option_selected = self._handle_console_input(console_option)
         return option_selected
-        
-    def _add_task(self, name: str) -> None:
-        """Armazena a tarefa com 'nome' e 'status' em um dicionário e o adiciona na lista."""
-        new_task = {'nome': name, 'status': self.UNDONE}
-        self.tasks.append(new_task)
-        print(messages.TASK_CREATED)
-
-    def _show_tasks(self) -> None:
-        """Exibe a lista de tarefas do usuário."""
-        print(messages.YOUR_TASKS)
-        for index, task in enumerate(self.tasks, start=1):
-            print(f'[{index}] - {task["nome"]} | {task["status"]}')
 
     def _handle_console_input(self, console_option) -> bool | None:
         """Verifica se a opção inserida pelo usuário é válida e lida de acordo."""
@@ -91,12 +76,12 @@ class Aplicativo:
             self.task_loop()
             return False
         elif console_option == 'S':
-            return True
+            return self._exit_app()
 
-    def _manage_task(self):
+    def _manage_task(self) -> None:
         """Exibe a lista de tarefas atual e as opções de gerenciamento."""
         print(messages.SELECT_TASK)
-        self._show_tasks()
+        self.task_list.show_tasks()
         task_number = self._get_valid_task_number()
         self._handle_user_option(task_number)
 
@@ -106,7 +91,7 @@ class Aplicativo:
             task_number = utils.get_valid_input('Número da tarefa: ')
             try:
                 int_task_number = int(task_number) - 1
-                print(f'\nTarefa "{self.tasks[int_task_number]["nome"]}" selecionada!')
+                print(f'\nTarefa "{self.task_list.tasks[int_task_number]["nome"]}" selecionada!')
                 return int_task_number
             except IndexError:
                 print('Número da tarefa não encontrado! Tente novamente.')
@@ -133,43 +118,25 @@ class Aplicativo:
     def _handle_options(self, task_number, option) -> bool:
         """Lida com a opção selecionada pelo usuário."""
         options_map = {
-            1: self._mark_as_done,
-            2: self._mark_as_undone,
-            3: self._edit_task,
-            4: self._delete_task,
+            1: self.task_list.mark_as_done,
+            2: self.task_list.mark_as_undone,
+            3: self.task_list.edit_task,
+            4: self.task_list.delete_task,
             5: self._go_back
         }
         action = options_map.get(option, self._invalid_option)
         return action(task_number)
 
-    def _mark_as_done(self, task_number):
-        self.tasks[task_number]['status'] = self.DONE
-        print(messages.MARKED_AS_DONE)
-        return True
-
-    def _mark_as_undone(self, task_number):
-        current_task = self.tasks[task_number]
-        if current_task['status'] != self.UNDONE:
-            current_task['status'] = self.UNDONE
-            print(messages.MARKED_AS_UNDONE)
-        else:
-            print(messages.ALREADY_UNDONE)
-            return False # Retorna False para seguir no loop até receber uma opção válida.
-        return True
-        
-    def _edit_task(self, task_number):
-        # Implementar edição
-        return True
-
-    def _delete_task(self, task_number):
-        deleted_task = self.tasks.pop(task_number)
-        print(f'Tarefa "{deleted_task["nome"]}" deletada!')
-        return True
-
-    def _go_back(self):
+    def _go_back(self, task_number):
         print('Retornando...')
         return True
 
     def _invalid_option(self):
+        """Exibe mensagem de opção inválida e retorna False para repetir o loop."""
         print(messages.OPTION_OUT_OF_RANGE)
         return False
+    
+    def _exit_app(self) -> bool:
+        """Exibe mensagem de saída e retorna True para encerrar o loop."""
+        print('Até a próxima!')
+        return True
