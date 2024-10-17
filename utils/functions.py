@@ -2,10 +2,10 @@ from typing import Any
 
 def get_valid_input(input_msg: str) -> Any:
     """Recebe uma mensagem para solicitar o input e lida com entradas inválidas."""
-    prompt = input(input_msg).strip()
+    prompt = input(input_msg).strip().upper()
     while not prompt:
         print('Entrada inválida. Por favor, tente novamente!')
-        prompt = input(input_msg).strip()
+        prompt = input(input_msg).strip().upper()
     return prompt
 
 def convert_to_int(input_msg) -> int:

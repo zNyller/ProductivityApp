@@ -1,7 +1,6 @@
 import logging
-import messages
-import utils
-from task_list import TaskList
+from config import MANAGING_OPTIONS, VALID_CONSOLE_OPTIONS
+from utils import messages, functions
 
 # Configuração básica de logging
 logging.basicConfig(
@@ -10,85 +9,53 @@ logging.basicConfig(
     datefmt='%d-%m-%Y %H:%M:%S' # Formato da data/hora
     ) 
 
-class Aplicativo:
-    """Clase principal. Cria, Gerencia e Exibe as tarefas do usuário."""
+class Console:
 
-    VALID_CONSOLE_OPTIONS = ('G', 'A', 'S')
+    def __init__(self, task_list) -> None:
+        self.task_list = task_list
 
-    def __init__(self) -> None:
-        self.running = False
-        self.task_list = TaskList()
-        self.managing_options = {
-            1: 'Concluir', 
-            2: 'Desmarcar conclusão', 
-            3: 'Editar', 
-            4: 'Deletar', 
-            5: 'Voltar'
-        }
-
-    def run(self) -> None:
-        """Inicia o aplicativo chamando suas funções principais."""
-        self.running = True
-        self.show_menu()
-        self.task_loop()
-        self.main_loop()
-
-    def show_menu(self) -> None:
-        """Exibe a mensagem de boas-vindas e pede a adição de uma primeira tarefa."""
-        print(messages.WELCOME_MSG)
-        first_task = utils.get_valid_input('Nome da sua primeira tarefa: ').capitalize()
-        self.task_list.add_task(first_task)
-
-    def task_loop(self) -> None:
+    def insert_task_loop(self) -> None:
         """Inicia um loop para adição de novas tarefas."""
-        print(messages.TASK_LOOP_MSG)
         while True:
-            task_name = utils.get_valid_input('Nome da tarefa: ').capitalize()
+            print(messages.TASK_LOOP_MSG)
+            task_name = functions.get_valid_input('\nNome da tarefa: ')
             if task_name == 'P':
                 print('Prosseguindo...')
                 self.task_list.show_tasks()
                 break
             self.task_list.add_task(task_name)
 
-    def main_loop(self) -> None:
-        """Gerencia o loop principal do aplicativo."""
-        while self.running:
-            encerrar = self.console()
-            if encerrar:
-                logging.info('Quebrando o loop principal')
-                self.running = False
-
-    def console(self) -> bool | None:
-        """Exibe e trata as opções do usuário para gerenciar as tarefas."""
+    def show(self) -> bool | None:
+        """Exibe e trata a opção do usuário para gerenciar as tarefas e a retorna."""
         print(messages.SELECT_OPTION)
-        console_option = utils.get_valid_input('Insira uma das opções: ').upper()
-        option_selected = self._handle_console_input(console_option)
-        return option_selected
-
+        user_option = functions.get_valid_input('Insira uma das opções: ')
+        return self._handle_console_input(user_option)
+    
     def _handle_console_input(self, console_option) -> bool | None:
         """Verifica se a opção inserida pelo usuário é válida e lida de acordo."""
-        while console_option not in self.VALID_CONSOLE_OPTIONS:
+        while console_option not in VALID_CONSOLE_OPTIONS:
             print('Opção inválida. Tente novamente!')
-            console_option = input('Insira uma das opções: ').upper()
+            console_option = functions.get_valid_input('Insira uma das opções: ')
         if console_option == 'G':
-            return self._manage_task()
+            self._manage_task()
+            return False
         elif console_option == 'A':
-            self.task_loop()
+            self.insert_task_loop()
             return False
         elif console_option == 'S':
-            return self._exit_app()
-
+            return True
+        
     def _manage_task(self) -> None:
         """Exibe a lista de tarefas atual e as opções de gerenciamento."""
-        print(messages.SELECT_TASK)
         self.task_list.show_tasks()
+        print(messages.SELECT_TASK)
         task_number = self._get_valid_task_number()
         self._handle_user_option(task_number)
 
     def _get_valid_task_number(self) -> int | None:
         """Pergunta o número da tarefa e trata possiveis exceções."""
         while True:
-            task_number = utils.get_valid_input('Número da tarefa: ')
+            task_number = functions.get_valid_input('Número da tarefa: ')
             try:
                 int_task_number = int(task_number) - 1
                 print(f'\nTarefa "{self.task_list.tasks[int_task_number]["nome"]}" selecionada!')
@@ -106,13 +73,13 @@ class Aplicativo:
         """Exibe as opções de gerenciamento e lida com a opção escolhida pelo usuário."""
         self._show_managing_options()
         while True:
-            user_option = utils.convert_to_int(input_msg='Insira uma das opções: ')
+            user_option = functions.convert_to_int(input_msg='Insira uma das opções: ')
             proceed = self._handle_options(task_number, user_option)
             if proceed:
                 break
 
     def _show_managing_options(self) -> None:
-        for key, value in self.managing_options.items():
+        for key, value in MANAGING_OPTIONS.items():
             print(f'[{key}] - {value}')
 
     def _handle_options(self, task_number, option) -> bool:
@@ -127,11 +94,11 @@ class Aplicativo:
         action = options_map.get(option, self._invalid_option)
         return action(task_number)
 
-    def _go_back(self, task_number):
+    def _go_back(self):
         print('Retornando...')
         return True
 
-    def _invalid_option(self):
+    def _invalid_option(self, option):
         """Exibe mensagem de opção inválida e retorna False para repetir o loop."""
         print(messages.OPTION_OUT_OF_RANGE)
         return False

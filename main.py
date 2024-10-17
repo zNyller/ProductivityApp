@@ -1,4 +1,4 @@
-from app import Aplicativo
+from core.app import Aplicativo
 
 
 def main() -> None:
